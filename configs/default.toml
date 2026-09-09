@@ -1,0 +1,22 @@
+# maskperson 默认配置
+
+input_video = "input/input.mp4"
+output_video = "output/anonymized.mp4"
+temp_no_audio = "temp/no_audio.mp4"
+temp_audio = "temp/audio.aac"
+
+model_weight = "models/yolov8s-seg.pt"
+conf_thresh = 0.35
+iou_thresh = 0.5
+
+# 马赛克强度（越大越模糊）
+mosaic_block_size = 20
+
+# mask 膨胀半径，覆盖快速移动边缘漏出
+expand_pixels = 5
+
+# 时序平滑
+smooth_window_size = 5
+
+# 跟踪器
+track_max_age = 30

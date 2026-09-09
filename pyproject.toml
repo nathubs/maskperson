@@ -1,0 +1,52 @@
+[project]
+name = "maskperson"
+version = "0.1.0"
+description = "视频人体脱敏工具 — YOLO 跟踪 + 马赛克"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Eden" }]
+
+dependencies = [
+    "opencv-python>=4.10.0",
+    "numpy>=1.26.0",
+    "ultralytics>=8.3.0",
+    "toml>=0.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "types-toml>=0.10.0",
+]
+
+[project.scripts]
+maskperson = "maskperson.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# 强制 torch/torchvision 从 PyTorch CPU 索引下载
+[tool.uv]
+find-links = ["https://download.pytorch.org/whl/cpu"]
+constraint-dependencies = [
+    "torch @ https://download.pytorch.org/whl/cpu/torch-2.5.1%2Bcpu-cp312-cp312-linux_x86_64.whl",
+    "torchvision @ https://download.pytorch.org/whl/cpu/torchvision-0.20.1%2Bcpu-cp312-cp312-linux_x86_64.whl",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_ignores = true
