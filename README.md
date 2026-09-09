@@ -7,8 +7,32 @@
 - 使用 YOLOv8-Seg 分割模型检测人体
 - ByteTrack 多目标跟踪，保持身份一致性
 - 时序平滑，消除马赛克闪烁
+- mask 膨胀，覆盖快速移动边缘漏出
 - 自动提取并合并音频轨道
 - 支持配置文件 / 环境变量 / 命令行参数覆盖
+
+## 项目结构
+
+```
+maskperson/
+├── src/maskperson/          # 源码
+│   ├── __init__.py
+│   ├── __main__.py          # CLI 入口
+│   ├── config.py            # 配置管理
+│   ├── core.py              # 主处理流程
+│   ├── mosaic.py            # 马赛克算法 + mask 膨胀
+│   ├── tracker.py           # 跟踪器 + 时序平滑
+│   └── video.py             # 视频读写 + ffmpeg 封装
+├── tests/                   # 单元测试
+├── configs/
+│   └── default.toml         # 默认配置
+├── scripts/
+│   └── run.sh              # 快速运行脚本
+├── models/                  # YOLO 模型权重
+├── input/                   # 输入视频
+├── output/                  # 输出视频
+└── temp/                    # 临时文件
+```
 
 ## 安装
 
@@ -48,7 +72,8 @@ chmod +x scripts/run.sh
 | `output_video` | `output/anonymized.mp4` | 输出视频路径 |
 | `model_weight` | `models/yolov8s-seg.pt` | YOLO 模型路径 |
 | `conf_thresh` | `0.35` | 置信度阈值 |
-| `mosaic_block_size` | `12` | 马赛克块大小，越大越模糊 |
+| `mosaic_block_size` | `20` | 马赛克块大小，越大越模糊 |
+| `expand_pixels` | `5` | mask 膨胀半径，覆盖移动边缘 |
 | `smooth_window_size` | `5` | 时序平滑窗口 |
 | `track_max_age` | `30` | 目标消失后保留帧数 |
 
