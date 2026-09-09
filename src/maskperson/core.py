@@ -13,6 +13,7 @@ profile 显示（1080p，14 track）：
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import cv2
@@ -67,6 +68,10 @@ def _mosaic_with_mask_gpu(
 
 def process_video(cfg: Config) -> None:
     """主处理流程：读取视频 → YOLO 推理（GPU）→ 马赛克（GPU）→ 输出。"""
+    # 抑制 ultralytics 的 'half' deprecation 等噪声告警；
+    # WARNING 级别保留真正的错误，INFO 级一次性提示（如 half）会被屏蔽。
+    logging.getLogger("ultralytics").setLevel(logging.WARNING)
+
     model = YOLO(cfg.model_weight)
     device = resolve_device(cfg.device)
     device_desc = apply_device(model, device)

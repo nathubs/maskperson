@@ -70,8 +70,37 @@ class VideoWriter:
         self.release()
 
 
-def extract_audio(input_video: str, output_audio: str) -> None:
-    """从视频提取音频轨道。"""
+def has_audio_stream(input_video: str) -> bool:
+    """检测视频是否包含音频轨。
+
+    用 ``ffprobe`` 解析流信息；找不到 ffprobe 或解析失败时返回 False（保守）。
+    """
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-select_streams", "a",
+                "-show_entries", "stream=index",
+                "-of", "csv=p=0",
+                input_video,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return False
+    return bool(result.stdout.strip())
+
+
+def extract_audio(input_video: str, output_audio: str) -> bool:
+    """从视频提取音频轨道；无音频轨时静默跳过并返回 False。
+
+    Returns:
+        True  = 成功提取；False = 源视频无音频轨。
+    """
+    if not has_audio_stream(input_video):
+        return False
     Path(output_audio).parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
@@ -83,6 +112,7 @@ def extract_audio(input_video: str, output_audio: str) -> None:
         capture_output=True,
         check=True,
     )
+    return True
 
 
 def merge_av(
@@ -93,19 +123,23 @@ def merge_av(
     width: int,
     height: int,
 ) -> None:
-    """合并音视频流，使用 libx264 重新编码。"""
+    """合并音视频流，使用 libx264 重新编码。
+
+    若 ``audio_path`` 为空字符串，则只 remux 视频（适用于源视频无音频轨场景）。
+    """
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        [
-            "ffmpeg", "-y",
-            "-i", video_path,
-            "-i", audio_path,
-            "-c:v", "libx264",
-            "-crf", "23",
-            "-vf", f"fps={fps},scale={width}:{height}",
-            "-c:a", "aac",
-            output_path,
-        ],
-        capture_output=True,
-        check=True,
-    )
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+    ]
+    if audio_path:
+        cmd += ["-i", audio_path]
+    cmd += [
+        "-c:v", "libx264",
+        "-crf", "23",
+        "-vf", f"fps={fps},scale={width}:{height}",
+    ]
+    if audio_path:
+        cmd += ["-c:a", "aac"]
+    cmd += [output_path]
+    subprocess.run(cmd, capture_output=True, check=True)

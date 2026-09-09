@@ -7,7 +7,7 @@ import sys
 
 from maskperson.config import load_config
 from maskperson.core import process_video
-from maskperson.video import extract_audio, merge_av
+from maskperson.video import extract_audio, has_audio_stream, merge_av
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -70,12 +70,18 @@ def main() -> int:
     # 1. 处理帧
     process_video(cfg)
 
-    # 2. 提取音频
-    print("  提取音频...")
-    extract_audio(cfg.input_video, cfg.temp_audio)
+    # 2. 探测源视频是否含音频轨；没有则整段跳过音频处理
+    has_audio = has_audio_stream(cfg.input_video)
 
-    # 3. 合并音视频
-    print("  合并音视频...")
+    # 3. 提取音频（仅当有音频轨时）
+    if has_audio:
+        print("  提取音频...")
+        extract_audio(cfg.input_video, cfg.temp_audio)
+    else:
+        print("  源视频无音频轨，跳过音频提取")
+
+    # 4. 合并 / 封装
+    print("  封装输出...")
     import cv2
 
     cap = cv2.VideoCapture(cfg.temp_no_audio)
@@ -86,7 +92,7 @@ def main() -> int:
 
     merge_av(
         video_path=cfg.temp_no_audio,
-        audio_path=cfg.temp_audio,
+        audio_path=cfg.temp_audio if has_audio else "",
         output_path=cfg.output_video,
         fps=fps,
         width=width,
