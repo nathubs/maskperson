@@ -21,6 +21,10 @@ def process_video(cfg: Config) -> None:
     device_desc = apply_device(model, device)
     print(f"推理设备: {device_desc}")
 
+    # H20/A100 等支持 fp16 的 GPU 启用半精度，吞吐约 2×
+    use_half = device.startswith("cuda")
+    print(f"半精度推理: {'开启' if use_half else '关闭'}")
+
     cache = TrackCache(
         smooth_window_size=cfg.smooth_window_size,
         max_age=cfg.track_max_age,
@@ -46,6 +50,8 @@ def process_video(cfg: Config) -> None:
                     break
 
                 # YOLO 推理 — 只检测人体 (class 0)
+                # retina_masks=False: 在推理网络分辨率(640)出 mask，后续一次性 resize 到原图，
+                # 避免 1920x1080 大 mask 在 CPU/GPU 间搬运。
                 results = model.track(
                     frame,
                     conf=cfg.conf_thresh,
@@ -53,7 +59,8 @@ def process_video(cfg: Config) -> None:
                     classes=[0],
                     persist=True,
                     verbose=False,
-                    retina_masks=True,
+                    retina_masks=False,
+                    half=use_half,
                 )
                 res = results[0]
                 anonymized = frame.copy()
