@@ -45,6 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
         dest="expand_pixels",
         help="mask 膨胀半径，覆盖移动边缘 (默认 5)",
     )
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cpu", "cuda"],
+        help=(
+            "推理设备。auto=自动检测（CUDA 优先，CPU 兜底，默认），"
+            "cuda=强制 GPU（不可用则报错），cpu=强制 CPU。"
+            " 指定 cuda:N 选择具体卡可通过 Config/TOML/MASKPERSON_DEVICE 配置。"
+        ),
+    )
     return parser
 
 

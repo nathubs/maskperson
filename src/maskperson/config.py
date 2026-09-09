@@ -23,6 +23,9 @@ class Config:
     smooth_window_size: int = 5
     track_max_age: int = 30
 
+    # 推理设备：auto（CUDA 优先，CPU 兜底） / cpu / cuda / cuda:N
+    device: str = "auto"
+
 
 def load_config(config_path: str | None = None) -> Config:
     """加载配置，优先级：命令行 > 环境变量 > 配置文件 > 默认值"""

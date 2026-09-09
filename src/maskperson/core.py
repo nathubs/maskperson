@@ -8,6 +8,7 @@ import cv2
 from ultralytics import YOLO
 
 from maskperson.config import Config
+from maskperson.device import apply_device, resolve_device
 from maskperson.mosaic import create_pixel_mosaic
 from maskperson.tracker import TrackCache
 from maskperson.video import VideoCapture, VideoWriter
@@ -16,6 +17,10 @@ from maskperson.video import VideoCapture, VideoWriter
 def process_video(cfg: Config) -> None:
     """主处理流程：读取视频 → YOLO 推理 → 马赛克 → 输出。"""
     model = YOLO(cfg.model_weight)
+    device = resolve_device(cfg.device)
+    device_desc = apply_device(model, device)
+    print(f"推理设备: {device_desc}")
+
     cache = TrackCache(
         smooth_window_size=cfg.smooth_window_size,
         max_age=cfg.track_max_age,

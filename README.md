@@ -76,6 +76,42 @@ chmod +x scripts/run.sh
 | `expand_pixels` | `5` | mask 膨胀半径，覆盖移动边缘 |
 | `smooth_window_size` | `5` | 时序平滑窗口 |
 | `track_max_age` | `30` | 目标消失后保留帧数 |
+| `device` | `auto` | 推理设备：`auto` / `cpu` / `cuda` / `cuda:N` |
+
+## 设备选择
+
+默认自动检测 — NVIDIA 机器用 GPU，无 GPU 机器自动降级 CPU。
+
+```bash
+# 自动（默认）：检测到 CUDA 则用，否则 CPU
+.venv/bin/python -m maskperson -i in.mp4 -o out.mp4
+
+# 强制 CPU
+.venv/bin/python -m maskperson --device cpu -i in.mp4 -o out.mp4
+
+# 强制 GPU（不可用时报错并提示排查）
+.venv/bin/python -m maskperson --device cuda -i in.mp4 -o out.mp4
+```
+
+也可通过 `configs/default.toml` 或环境变量 `MASKPERSON_DEVICE` 设置，例如指定第二块显卡：
+
+```bash
+MASKPERSON_DEVICE=cuda:1 .venv/bin/python -m maskperson -i in.mp4 -o out.mp4
+```
+
+启动时日志会打印实际使用的设备：
+
+```
+推理设备: cuda (NVIDIA GeForce RTX 4090)
+# 或
+推理设备: cpu
+```
+
+**安装阶段**：`pyproject.toml` 默认从 PyPI 拉取 torch wheel（兼容 GPU/CPU）。如需更小体积的纯 CPU wheel（避开 NVIDIA 驱动版本要求）：
+
+```bash
+uv sync --no-extra default --extra cpu
+```
 
 ## 开发
 

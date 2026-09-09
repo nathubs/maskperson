@@ -26,10 +26,14 @@ temp/                 # 临时文件
 
 ## 依赖问题
 
-当前 uv lockfile 中 torch==2.5.1+cpu 的平台标记与 ultralytics 的 torch 依赖声明在 Windows 解析路径下冲突。实际运行不受影响（Linux x86_64 下正常）。如需重新 `uv sync`，先手动装 CPU torch：
+torch 默认从 PyPI 拉取（兼容 GPU/CPU 的 fat wheel），无 NVIDIA 机器运行时自动降级 CPU。如需更小体积的纯 CPU wheel（避开 NVIDIA 驱动版本要求）：
 ```bash
-uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+uv sync --no-extra default --extra cpu
 ```
+
+## 设备选择
+
+启动时调用 `maskperson.device.resolve_device(cfg.device)` 决定推理设备，支持 `auto` / `cpu` / `cuda` / `cuda:N`。CLI 用 `--device` 显式覆盖。NVIDIA 机器自动用 GPU；无 GPU 机器自动降级 CPU。
 
 ## 测试
 
