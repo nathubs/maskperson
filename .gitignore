@@ -28,6 +28,8 @@ uv.lock
 temp/
 models/*.pt
 models/*.pth
+# ultralytics 下载大权重时的分块临时文件
+models/*.pt.*.part
 input/*.mp4
 input/*.avi
 input/*.mov
