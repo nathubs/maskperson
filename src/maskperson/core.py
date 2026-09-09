@@ -22,8 +22,15 @@ def process_video(cfg: Config) -> None:
     print(f"推理设备: {device_desc}")
 
     # H20/A100 等支持 fp16 的 GPU 启用半精度，吞吐约 2×
-    use_half = device.startswith("cuda")
-    print(f"半精度推理: {'开启' if use_half else '关闭'}")
+    # ultralytics >= 8.3 已移除 track() 的 half= 参数，改用 model.half() 全局切换
+    if device.startswith("cuda"):
+        try:
+            model.half()
+            print("半精度推理: 开启（fp16）")
+        except Exception as e:  # pragma: no cover — 极少数 GPU/CUDA 版本不支持
+            print(f"半精度推理: 关闭（{e}）")
+    else:
+        print("半精度推理: 关闭（CPU）")
 
     cache = TrackCache(
         smooth_window_size=cfg.smooth_window_size,
@@ -60,7 +67,6 @@ def process_video(cfg: Config) -> None:
                     persist=True,
                     verbose=False,
                     retina_masks=False,
-                    half=use_half,
                 )
                 res = results[0]
                 anonymized = frame.copy()
