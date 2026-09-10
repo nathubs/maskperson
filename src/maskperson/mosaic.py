@@ -111,3 +111,101 @@ def create_pixel_mosaic(
     mos_padded[: bh * block_size, : bw * block_size] = mos_full
     # 4) 对 mask 区域一次性赋值；非 mask 区域保留原图
     return np.where(mask_expanded[..., None], mos_padded, image)
+
+
+def create_solid_black_mosaic(
+    image: np.ndarray,
+    mask: np.ndarray,
+    expand_pixels: int = 0,
+) -> np.ndarray:
+    """实心黑色覆盖 — mask 区域全部置 0。最强脱敏，完全不可识别。
+
+    忽略 ``block_size``（对纯黑无意义）。
+
+    Args:
+        image:         原始帧 [H, W, C]。
+        mask:          布尔掩码 [H, W]。
+        expand_pixels: mask 膨胀半径。
+    """
+    mask_expanded = expand_mask(mask, expand_pixels)
+    if not mask_expanded.any():
+        return image
+    black = np.zeros_like(image)
+    return np.where(mask_expanded[..., None], black, image)
+
+
+def create_checkerboard_mosaic(
+    image: np.ndarray,
+    mask: np.ndarray,
+    block_size: int,
+    expand_pixels: int = 0,
+) -> np.ndarray:
+    """黑白棋盘格覆盖 — mask 区域用 ``block_size`` 大小的黑白方块交错填充。
+
+    高对比度棋盘格消除所有轮廓信息；视觉上比纯黑更明显"已被脱敏"。
+    ``block_size`` 控制方格大小，越大越粗糙。
+
+    Args:
+        image:         原始帧 [H, W, C]。
+        mask:          布尔掩码 [H, W]。
+        block_size:    棋盘方块边长（像素）。0 或负数当作 1。
+        expand_pixels: mask 膨胀半径。
+    """
+    if block_size <= 0:
+        block_size = 1
+
+    mask_expanded = expand_mask(mask, expand_pixels)
+    if not mask_expanded.any():
+        return image
+
+    h, w = image.shape[:2]
+    bh = h // block_size
+    bw = w // block_size
+
+    # 构造 [bh, bw] 的 0/1 棋盘，然后广播到原图尺寸 [H, W]
+    pattern = np.indices((bh, bw)).sum(axis=0) % 2  # 0 = 黑, 1 = 白
+    # 全图尺寸的棋盘（pad 剩余行/列从原图补齐，pattern 自然在左上完整区）
+    full_pattern = np.zeros((h, w), dtype=np.uint8)
+    full_pattern[: bh * block_size, : bw * block_size] = np.repeat(
+        np.repeat(pattern, block_size, axis=0), block_size, axis=1
+    )
+
+    # mask 区域内：偶数格黑，奇数格白
+    cb = np.where(full_pattern[..., None] == 0, 0, 255).astype(np.uint8)
+    cb = np.broadcast_to(cb, image.shape).copy()
+    return np.where(mask_expanded[..., None], cb, image)
+
+
+def apply_mosaic(
+    image: np.ndarray,
+    mask: np.ndarray,
+    style: str,
+    block_size: int,
+    expand_pixels: int = 0,
+) -> np.ndarray:
+    """按 ``style`` 分派到对应脱敏函数。
+
+    Args:
+        image, mask, block_size, expand_pixels: 同各风格函数。
+        style: ``pixel`` / ``solid_black`` / ``checkerboard``。
+
+    Raises:
+        ValueError: 未知风格。
+    """
+    if style == "pixel":
+        return create_pixel_mosaic(
+            image, mask,
+            block_size=block_size,
+            expand_pixels=expand_pixels,
+        )
+    if style == "solid_black":
+        return create_solid_black_mosaic(image, mask, expand_pixels=expand_pixels)
+    if style == "checkerboard":
+        return create_checkerboard_mosaic(
+            image, mask,
+            block_size=block_size,
+            expand_pixels=expand_pixels,
+        )
+    raise ValueError(
+        f"未知 mosaic_style: {style!r}（应为 pixel / solid_black / checkerboard）"
+    )

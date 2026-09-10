@@ -43,7 +43,27 @@ def build_parser() -> argparse.ArgumentParser:
         "--expand",
         type=int,
         dest="expand_pixels",
-        help="mask 膨胀半径，覆盖移动边缘 (默认 5)",
+        help="mask 膨胀半径，覆盖移动边缘 (默认 15)",
+    )
+    parser.add_argument(
+        "--mosaic-style",
+        choices=["pixel", "solid_black", "checkerboard"],
+        dest="mosaic_style",
+        help=(
+            "脱敏风格：pixel=模糊马赛克（默认，向后兼容）；"
+            "solid_black=实心黑色（最强脱敏，完全不可识别）；"
+            "checkerboard=黑白棋盘格（高对比度，最强 + 视觉提示）。"
+        ),
+    )
+    parser.add_argument(
+        "--imgsz",
+        type=int,
+        dest="imgsz",
+        help=(
+            "YOLO 推理分辨率（默认 640）。"
+            "调大（如 960/1280）可显著改善小目标检测，但 GPU 显存占用和耗时也会增加。"
+            "需为 32 的倍数。"
+        ),
     )
     parser.add_argument(
         "--device",

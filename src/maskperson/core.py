@@ -66,6 +66,46 @@ def _mosaic_with_mask_gpu(
     )
 
 
+def _solid_black_with_mask_gpu(
+    image_gpu: torch.Tensor,
+    mask_gpu: torch.Tensor,
+) -> torch.Tensor:
+    """GPU 实心黑覆盖：mask 区域置 0。最强脱敏，完全不可识别。"""
+    black = torch.zeros_like(image_gpu)
+    return torch.where(mask_gpu[..., None], black, image_gpu)
+
+
+def _checkerboard_with_mask_gpu(
+    image_gpu: torch.Tensor,
+    mask_gpu: torch.Tensor,
+    block_size: int,
+) -> torch.Tensor:
+    """GPU 黑白棋盘格覆盖：高对比度消除轮廓信息。"""
+    if block_size <= 0:
+        block_size = 1
+    h, w = image_gpu.shape[:2]
+    bh = h // block_size
+    bw = w // block_size
+    if bh == 0 or bw == 0:
+        return _solid_black_with_mask_gpu(image_gpu, mask_gpu)
+
+    # [bh, bw] 0/1 棋盘 → 广播到 [H, W]
+    pattern = (
+        (torch.arange(bh, device=image_gpu.device)[:, None]
+         + torch.arange(bw, device=image_gpu.device)[None, :]) % 2
+    ).to(torch.uint8)
+    pattern_full = pattern.repeat_interleave(block_size, dim=0) \
+                       .repeat_interleave(block_size, dim=1)            # [bh*bs, bw*bs]
+    full = torch.zeros((h, w), dtype=torch.uint8, device=image_gpu.device)
+    full[: bh * block_size, : bw * block_size] = pattern_full
+
+    # 偶数格 0、奇数格 255 → [H, W, 3]
+    cb = torch.where(full[..., None] == 0,
+                     torch.zeros(3, dtype=torch.uint8, device=image_gpu.device),
+                     torch.tensor([255, 255, 255], dtype=torch.uint8, device=image_gpu.device))
+    return torch.where(mask_gpu[..., None], cb, image_gpu)
+
+
 def process_video(cfg: Config) -> None:
     """主处理流程：读取视频 → YOLO 推理（GPU）→ 马赛克（GPU）→ 输出。"""
     # 抑制 ultralytics 的 'half' deprecation 等噪声告警；
@@ -131,6 +171,7 @@ def process_video(cfg: Config) -> None:
                     persist=True,
                     verbose=False,
                     retina_masks=False,
+                    imgsz=cfg.imgsz,
                 )
                 res = results[0]
 
@@ -164,9 +205,17 @@ def process_video(cfg: Config) -> None:
 
                         # 时序平滑（GPU）：直接调用 TrackCache.update（同后端）
                         smooth = cache.update(int(tid), m, frame_idx)
-                        out_gpu = _mosaic_with_mask_gpu(
-                            out_gpu, smooth, cfg.mosaic_block_size,
-                        )
+                        # 按 mosaic_style 分派
+                        if cfg.mosaic_style == "solid_black":
+                            out_gpu = _solid_black_with_mask_gpu(out_gpu, smooth)
+                        elif cfg.mosaic_style == "checkerboard":
+                            out_gpu = _checkerboard_with_mask_gpu(
+                                out_gpu, smooth, cfg.mosaic_block_size,
+                            )
+                        else:  # pixel（默认，向后兼容）
+                            out_gpu = _mosaic_with_mask_gpu(
+                                out_gpu, smooth, cfg.mosaic_block_size,
+                            )
 
                     anonymized = out_gpu.cpu().numpy()
                 else:

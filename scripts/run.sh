@@ -3,12 +3,13 @@
 
 set -e
 
-# 确保模型存在
-if [ ! -f "models/yolov8s-seg.pt" ]; then
-    echo "⚠️  模型不存在，正在下载..."
-    .venv/bin/python -c "from ultralytics import YOLO; YOLO('yolov8s-seg.pt')"
+# 确保模型存在（默认 medium，精度更好；用户可通过 -m 切换）
+MODEL="${MASKPERSON_MODEL:-models/yolov8m-seg.pt}"
+if [ ! -f "$MODEL" ]; then
+    echo "⚠️  模型 $MODEL 不存在，正在下载..."
+    .venv/bin/python -c "from ultralytics import YOLO; YOLO('${MODEL##*/}')"
     mkdir -p models
-    mv yolov8s-seg.pt models/ 2>/dev/null || true
+    mv "${MODEL##*/}" "$MODEL" 2>/dev/null || true
 fi
 
 # 默认参数
@@ -17,5 +18,6 @@ OUTPUT="${2:-output/anonymized.mp4}"
 
 echo "输入: $INPUT"
 echo "输出: $OUTPUT"
+echo "模型: $MODEL"
 
-.venv/bin/python -m maskperson -i "$INPUT" -o "$OUTPUT"
+.venv/bin/python -m maskperson -m "$MODEL" -i "$INPUT" -o "$OUTPUT"

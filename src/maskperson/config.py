@@ -14,14 +14,18 @@ class Config:
     temp_no_audio: str = "temp/no_audio.mp4"
     temp_audio: str = "temp/audio.aac"
 
-    model_weight: str = "models/yolov8s-seg.pt"
-    conf_thresh: float = 0.35
+    model_weight: str = "models/yolov8m-seg.pt"
+    conf_thresh: float = 0.20
     iou_thresh: float = 0.5
+    imgsz: int = 640
 
     mosaic_block_size: int = 20
-    expand_pixels: int = 5
+    expand_pixels: int = 15
     smooth_window_size: int = 5
     track_max_age: int = 30
+
+    # 脱敏风格：pixel（模糊马赛克，向后兼容） / solid_black（实心黑块，完全不可识别）/ checkerboard（黑白棋盘）
+    mosaic_style: str = "pixel"
 
     # 推理设备：auto（CUDA 优先，CPU 兜底） / cpu / cuda / cuda:N
     device: str = "auto"

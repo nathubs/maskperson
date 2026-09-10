@@ -5,15 +5,19 @@ output_video = "output/anonymized.mp4"
 temp_no_audio = "temp/no_audio.mp4"
 temp_audio = "temp/audio.aac"
 
-model_weight = "models/yolov8s-seg.pt"
-conf_thresh = 0.35
+model_weight = "models/yolov8m-seg.pt"
+conf_thresh = 0.20
 iou_thresh = 0.5
+imgsz = 640
 
 # 马赛克强度（越大越模糊）
-mosaic_block_size = 20
+mosaic_block_size = 100
 
 # mask 膨胀半径，覆盖快速移动边缘漏出
-expand_pixels = 5
+expand_pixels = 15
+
+# 脱敏风格：pixel（模糊马赛克） / solid_black（实心黑，最强） / checkerboard（黑白棋盘）
+mosaic_style = "pixel"
 
 # 时序平滑
 smooth_window_size = 5

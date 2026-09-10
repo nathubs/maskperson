@@ -42,9 +42,31 @@ uv sync
 
 ## 下载模型
 
+默认模型 `yolov8m-seg.pt`（medium，52MB）。下载方式任选其一：
+
+### 方式 1：ultralytics 自动下载（默认）
+
 ```bash
+.venv/bin/python -c "from ultralytics import YOLO; YOLO('yolov8m-seg.pt')"
+mv yolov8m-seg.pt models/
+```
+
+### 方式 2：手动从镜像下载（国内推荐）
+
+GitHub raw 较慢时，可用镜像：
+
+```bash
+# 清华源（HTTP/HTTPS 镜像）
+curl -L -o models/yolov8m-seg.pt "https://mirror.ghproxy.com/https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8m-seg.pt"
+```
+
+### 方式 3：换更小的模型（如果不在意小目标精度）
+
+```bash
+# small 模型（22MB，GitHub raw 通常可直接下）
 .venv/bin/python -c "from ultralytics import YOLO; YOLO('yolov8s-seg.pt')"
 mv yolov8s-seg.pt models/
+.venv/bin/python -m maskperson -m models/yolov8s-seg.pt -i in.mp4 -o out.mp4
 ```
 
 ## 使用
@@ -70,13 +92,64 @@ chmod +x scripts/run.sh
 |------|--------|------|
 | `input_video` | `input/input.mp4` | 输入视频路径 |
 | `output_video` | `output/anonymized.mp4` | 输出视频路径 |
-| `model_weight` | `models/yolov8s-seg.pt` | YOLO 模型路径 |
-| `conf_thresh` | `0.35` | 置信度阈值 |
-| `mosaic_block_size` | `20` | 马赛克块大小，越大越模糊 |
-| `expand_pixels` | `5` | mask 膨胀半径，覆盖移动边缘 |
+| `model_weight` | `models/yolov8m-seg.pt` | YOLO 模型路径（推荐 medium 兼顾小目标） |
+| `conf_thresh` | `0.20` | 置信度阈值（降低以减少小目标漏检） |
+| `mosaic_block_size` | `100` | 马赛克/棋盘方块大小（pixel + checkerboard 用） |
+| `expand_pixels` | `15` | mask 膨胀半径，覆盖快速移动边缘 |
+| `mosaic_style` | `pixel` | 脱敏风格：`pixel` / `solid_black` / `checkerboard` |
+| `imgsz` | `640` | YOLO 推理分辨率（32 倍数），小目标检测可调到 960/1280 |
 | `smooth_window_size` | `5` | 时序平滑窗口 |
 | `track_max_age` | `30` | 目标消失后保留帧数 |
 | `device` | `auto` | 推理设备：`auto` / `cpu` / `cuda` / `cuda:N` |
+
+## 脱敏风格
+
+| 风格 | 效果 | 强度 |
+|---|---|---|
+| `pixel` | 模糊马赛克（原图均值），向后兼容 | ⭐⭐ |
+| `solid_black` | 实心黑块完全覆盖，**完全不可识别** | ⭐⭐⭐⭐⭐ |
+| `checkerboard` | 黑白棋盘格交错，高对比度 + 视觉提示 | ⭐⭐⭐⭐⭐ |
+
+```bash
+# 默认：模糊马赛克
+.venv/bin/python -m maskperson -i in.mp4 -o out.mp4
+
+# 最强脱敏（实心黑块）
+.venv/bin/python -m maskperson --mosaic-style solid_black -i in.mp4 -o out.mp4
+
+# 黑白棋盘（高对比度）
+.venv/bin/python -m maskperson --mosaic-style checkerboard -i in.mp4 -o out.mp4
+
+# 临时调大边缘覆盖
+.venv/bin/python -m maskperson --expand 30 --mosaic-style solid_black -i in.mp4 -o out.mp4
+```
+
+## 模型选择（避免小目标漏检）
+
+默认用 **YOLOv8m-seg**（medium，~52MB），相比 yolov8s-seg 召回小目标能力明显更强。
+若仍漏检，可同时上调 `imgsz`：
+
+```bash
+# 提高分辨率（最关键的杠杆）
+.venv/bin/python -m maskperson --imgsz 1280 -i in.mp4 -o out.mp4
+
+# 换更大的模型（最高精度）
+.venv/bin/python -m maskperson -m yolov8l-seg.pt -i in.mp4 -o out.mp4
+.venv/bin/python -m maskperson -m yolov8x-seg.pt -i in.mp4 -o out.mp4
+
+# 降低置信度阈值（可能引入假阳性）
+.venv/bin/python -m maskperson --conf-thresh 0.10 -i in.mp4 -o out.mp4
+```
+
+| 模型 | 大小 | 速度 | 小目标召回 |
+|---|---|---|---|
+| `yolov8n-seg.pt` | 6 MB | 🚀 最快 | ⭐⭐ |
+| `yolov8s-seg.pt` | 22 MB | 🚀 快 | ⭐⭐⭐ |
+| `yolov8m-seg.pt` (默认) | 52 MB | ⚡ 中等 | ⭐⭐⭐⭐ |
+| `yolov8l-seg.pt` | 86 MB | 🐢 慢 | ⭐⭐⭐⭐⭐ |
+| `yolov8x-seg.pt` | 131 MB | 🐢 最慢 | ⭐⭐⭐⭐⭐ |
+
+`imgsz` 越大对显存和耗时影响越大：640→960 约 2.2×，640→1280 约 4×。
 
 ## 设备选择
 
